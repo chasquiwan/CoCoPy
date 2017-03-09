@@ -1,0 +1,15 @@
+#!/bin/sh
+#BSUB -L /bin/sh
+#BSUB -q fat-short
+#BSUB -n 1
+#BSUB -R "span[hosts=1]"
+#BSUB -W 2:00
+#BSUB -N
+#BSUB -M 8000000
+#BSUB -R scratch
+
+export PATH=$HOME/bin:$PATH
+mkdir -p /scratch/${USER}
+MYSCRATCH=`mktemp -d /scratch/${USER}/py.XXXXXXXX`
+python autofit_gwdg.py test09 0 $MYSCRATCH
+rm -rf $MYSCRATCH
