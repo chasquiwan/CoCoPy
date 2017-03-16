@@ -30,7 +30,7 @@
 
 import numpy as np
 #from analysis.util import ProgressBar
-import analysis.util as util
+import util
 import itertools as it
 import os
 from tempfile import TemporaryFile
@@ -55,8 +55,8 @@ class Bloch:
         Parameters
         ----------
         prefix (str): Prefix for all temporary filenames ('test')
-        levels (int):
-        parts (int):
+        levels (int): number of energy levels involved
+        parts (int): number of different seperations in time??
         dt (float): timestep for the evaluation
 
         Returns
