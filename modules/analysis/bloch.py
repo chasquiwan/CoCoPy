@@ -47,7 +47,7 @@ Todo:
 
 class Bloch:
 
-    def __init__(self, prefix='test', levels=2, parts=2, dt=1.E-11):
+    def __init__(self, prefix='test', levels=2, parts=2, dt=1.E-11, abs_phase=True):
         '''
         This class tries to cover everything, which is related to Bloch
         equations.
@@ -75,6 +75,7 @@ class Bloch:
 
         self.pulse_scheme = []
 
+        self.abs_phase = abs_phase
         self.pulse = np.array([])
         self.freq = {}
         self.intens = {}
@@ -227,7 +228,7 @@ class Bloch:
                 r.set_initial_value(r.y, r.t).set_f_params(self.set_init(i))
                 tpp += self.pulse[i-1]
 
-            r.integrate(r.t + self.dt)
+            #r.integrate(r.t + self.dt)
 
             # Integrate and solve ODEs
             while r.successful() and r.t <= tpp + self.pulse[i]:
@@ -444,57 +445,67 @@ class Bloch:
 
         self.pulse = np.array([])
 
-        for x in get_keys(self):
+        for x in self.get_keys():
             self.freq[x] = np.array([])
             self.intens[x] = np.array([])
             self.phase[x] = np.array([])
 
         self.pulse_scheme = sorted(self.pulse_scheme)
-        self.pulse = []
+
+        i = 0
+        for j in range(len(self.pulse_scheme)):
+            if i > 0:
+                if (np.abs(self.pulse_scheme[i][0] - self.pulse_scheme[i-1][0]) < self.dt/10. and
+                self.pulse_scheme[i][1] == self.pulse_scheme[i-1][1]):
+                    if self.pulse_scheme[i][3] > self.pulse_scheme[i-1][3]:
+                        del self.pulse_scheme[i-1]
+                    else:
+                        del self.pulse_scheme[i]
+                    i -= 1
+
+            i += 1
 
         for i in range(len(self.pulse_scheme)):
-            for j in range(len(self.pulse_scheme))[i:]:
-                if self.pulse_scheme[j][0] != self.pulse_scheme[i][0]:
-                    self.pulse = np.append((self.pulse, [self.pulse_scheme[j][0] - self.pulse_scheme[i][0]]))
+            if i > 0:
+                if np.abs(self.pulse_scheme[i][0] - self.pulse_scheme[i-1][0]) > self.dt/10.:
+                    self.pulse = np.append(self.pulse, [self.pulse_scheme[i][0] - self.pulse_scheme[i-1][0]])
 
             if i == 0:
-                for x in get_keys():
+                for x in self.get_keys():
                     if x == self.pulse_scheme[i][1]:
-                        self.freq[x] = np.append((self.freq[x], [self.pulse_scheme[i][2]]))
-                        self.intens[x] = np.append((self.intens[x], [self.pulse_scheme[i][3]]))
-                        self.phase[x] = np.append((self.phase[x], [self.pulse_scheme[i][4]]))
+                        self.freq[x] = np.append(self.freq[x], [self.pulse_scheme[i][2] * self.ANGULAR])
+                        self.intens[x] = np.append(self.intens[x], [self.pulse_scheme[i][3]])
+                        self.phase[x] = np.append(self.phase[x], [self.pulse_scheme[i][4]])
 
                     else:
-                        self.freq[x] = np.append((self.freq[x], [0.]))
-                        self.intens[x] = np.append((self.intens[x], [0.]))
-                        self.phase[x] = np.append((self.phase[x], [0.]))
+                        self.freq[x] = np.append(self.freq[x], [0.])
+                        self.intens[x] = np.append(self.intens[x], [0.])
+                        self.phase[x] = np.append(self.phase[x], [0.])
 
-            elif self.pulse_scheme[i] == self.pulse_scheme[i-1]:
-                for x in get_keys():
+            elif i == len(self.pulse_scheme) - 1:
+                pass
+
+            elif np.abs(self.pulse_scheme[i][0] - self.pulse_scheme[i-1][0]) < self.dt/10.:
+                for x in self.get_keys():
                     if x == self.pulse_scheme[i][1]:
-                        self.freq[x][-1] = self.pulse_scheme[i][2]
+                        self.freq[x][-1] = self.pulse_scheme[i][2] * self.ANGULAR
                         self.intens[x][-1] = self.pulse_scheme[i][3]
                         self.phase[x][-1] = self.pulse_scheme[i][4]
 
             else:
-                for x in get_keys():
+                for x in self.get_keys():
                     if x == self.pulse_scheme[i][1]:
-                        self.freq[x] = np.append((self.freq[x], [self.pulse_scheme[i][2]]))
-                        self.intens[x] = np.append((self.intens[x], [self.pulse_scheme[i][3]]))
-                        self.phase[x] = np.append((self.phase[x], [self.pulse_scheme[i][4]]))
+                        self.freq[x] = np.append(self.freq[x], [self.pulse_scheme[i][2] * self.ANGULAR])
+                        self.intens[x] = np.append(self.intens[x], [self.pulse_scheme[i][3]])
+                        self.phase[x] = np.append(self.phase[x], [self.pulse_scheme[i][4]])
 
                     else:
-                        self.freq[x] = np.append((self.freq[x], [self.freq[x][-1]]))
-                        self.intens[x] = np.append((self.intens[x], [self.intens[x][-1]]))
-                        self.phase[x] = np.append((self.phase[x], [self.phase[x][-1]]))
+                        self.freq[x] = np.append(self.freq[x], [self.freq[x][-1]])
+                        self.intens[x] = np.append(self.intens[x], [self.intens[x][-1]])
+                        self.phase[x] = np.append(self.phase[x], [self.phase[x][-1]])
 
-
-
-
-
-
-            self.pulse = np.append((self.pulse, [self.pulse_scheme[i][0] - self.pulse_scheme[i-1][0]]))
-            self.freq[transition]
+            #self.pulse = np.append(self.pulse, [self.pulse_scheme[i][0] - self.pulse_scheme[i-1][0]])
+        self.params['parts'] = len(self.pulse)
 
     def single_pulse(self, length=1., freq=2000.):
         pass
@@ -515,18 +526,16 @@ class Bloch:
         end = start + duration
         T = 1./(frequency * 1.E6)
 
-        tmp = np.mod(duration, T)
-
         start = [start, transition, frequency, intensity, phase]
         end = [end, transition, 0., 0., 0.]
 
         self.pulse_scheme.append(start)
         self.pulse_scheme.append(end)
 
-    def chirped_pulse(self, start, duration, start_frequency, end_frequency, transition, intensity, phase = 0):
-        t = np.arange(0, duration + self.dt)
+    def chirped_pulse(self, start, duration, start_frequency, stop_frequency, transition, intensity, phase = 0):
+        t = np.arange(0, duration + self.dt, self.dt)
         freq = np.linspace(start_frequency, stop_frequency, len(t))
 
         for i in np.arange(len(t)):
-            instant_phase = phase + 2 * np.pi (stop_frequency-start_frequency) * 1E6 / (2. * duration * 1.E-6 * (t * 1E-6) ** 2)
-            self.pulse_scheme.append([t, transition, freq, intensity, instant_phase])
+            #instant_phase = phase + (stop_frequency-start_frequency) * self.ANGULAR / (2. * duration * 1.E-6 * (t[i] * 1.E-6) ** 2)
+            self.pulse_scheme.append([start + t[i], transition, freq[i], intensity, phase])
